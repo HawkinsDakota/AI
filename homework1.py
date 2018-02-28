@@ -1,6 +1,11 @@
 """
-This is a python script to create a 2 or 3 layer Neural Net to perform
-classification.
+This is a python script to create a feed forward layer Neural Net with sigmoid
+activation functions to perform classification.
+
+This script is written in Python 3.
+
+Necessary libraries:
+numpy, matplot lib, itertools, sklearn
 
 @author: Dakota Hawkins
 @class: BU CS640
@@ -44,7 +49,18 @@ class NeuralNet(object):
             verbose (boolean): whether to plot MSE after fit. Default is True.
         
         Instance Variables:
-
+            bias_nodes (boolean): whether to introduce bias nodes to each
+                non-output layer of the model.
+            n_input (int): number of input nodes not including possible bias
+                nodes.
+            n_output (int): number of output nodes.
+            n_layers (int): number of layers in the model.
+            alpha (float): learning rate of the model.
+            weights (list, numpy.ndarray): list of weighted transition matrices
+                from one layer to the next.
+            verbose (boolean): whether to track Mean-Square Error throughout
+                training epochs.
+            w_lambda (float): 
         """
         # list indicating size transitions between each layer
         # (e.g. |input nodes| - > |output nodes|)
@@ -133,6 +149,9 @@ class NeuralNet(object):
         """
         Predict class membership for proved samples.
 
+        Performs a forward pass through the network, and returns an integer
+        label corresponding to the most probable class.
+
         Arguments:
             data (numpy.ndarray): An n x m data matrix where n is the number 
                 of samples and m is the number of input nodes provided in the
@@ -159,6 +178,11 @@ class NeuralNet(object):
     def fit(self, data, labels, epochs=100):
         """
         Fit the NeuralNet to the provided labeled dataset.
+
+        Performs forward passes through the network and back propogates errors
+        for each sample provided in `data`. Weights are updated after each
+        sample. The entire dataset is passed through as many times as specified
+        by the `epochs` parameter.
 
         Arguments:
             data (numpy.ndarray): An (n x m) data matrix where n is the number 
@@ -271,10 +295,10 @@ known vectors.")
 
     def backward(self, cost, layer_outputs):
         """
-        Perform back propogration to update weights for the network.
+        Perform back propogation to update weights for the network.
 
         Arguments:
-            cost (numpy.ndarray): an (n x 1) float array where each number is
+            cost (numpy.ndarray): an (k x 1) float array where each number is
                 mean squared error produced by a forward pass through the
                 network for each sample.
 
@@ -481,7 +505,7 @@ def run_experiments():
     n9 = NeuralNet(digit_train_data.shape[1], len(set(digit_train_labels)),
                    hidden_layer_nodes=[200], learning_rate=1,
                    w_lambda=1)
-    n9.fit(digit_test_data, digit_test_labels, epochs=5000)
+    n9.fit(digit_train_data, digit_train_labels, epochs=5000)
     predict_digits = n9.predict(digit_test_data)
     cf_matrix = confusion_matrix(digit_test_labels, predict_digits)
     plot_confusion_matrix(cf_matrix, list(set(digit_test_labels)),
