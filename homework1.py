@@ -91,8 +91,8 @@ class NeuralNet(object):
         # layer i nodes as rows, layer i + 1 nodes as columns
         self.weights = []
         for i, dim in enumerate(shape_transitions[0:-1]):
-            self.weights.append(np.ones((dim + self.bias_nodes,
-                                shape_transitions[i + 1])))
+            self.weights.append(np.random.rand(dim + self.bias_nodes,
+                                               shape_transitions[i + 1]))
 
         try:
             self.verbose = bool(verbose)  # whether to plot
@@ -208,13 +208,11 @@ class NeuralNet(object):
             
         return None
 
-    @staticmethod
-    def calculate_mse(cost):
+    def calculate_mse(self, cost):
         """Calculate Mean-Squared Error from prediction costs."""
         return np.sum(cost**2)
 
-    @staticmethod
-    def compute_cost(predicted, known):
+    def compute_cost(self, predicted, known):
         """
         Compute the cost of predicted labels from a forward pass in the network.
 
@@ -271,60 +269,50 @@ known vectors.")
         # return outputs generated at each layer
         return layer_outputs
 
-def backward(cost, layer_outputs):
-    """
-    Perform back propogration to update weights for the network.
+    def backward(self, cost, layer_outputs):
+        """
+        Perform back propogration to update weights for the network.
 
-    Arguments:
-        cost (numpy.ndarray): an (n x 1) float array where each number is
-            mean squared error produced by a forward pass through the
-            network for each sample.
+        Arguments:
+            cost (numpy.ndarray): an (n x 1) float array where each number is
+                mean squared error produced by a forward pass through the
+                network for each sample.
 
-        layer_outputs(list, numpy.ndarray): output from `forward()`. List
-            of node outputs at each layer of the network. 
+            layer_outputs(list, numpy.ndarray): output from `forward()`. List
+                of node outputs at each layer of the network. 
 
-    Returns:
-        None
-    """
-    previous_beta = cost
-    new_weights = [each.copy() for each in self.weights]
-    # iterate from n to 0 layer outputs -> update weights and calculate
-    # beta for next iteration.
-    for idx in range(self.n_layers - 1, 0, -1):
-        # update weights using previously calculated beta values
-        node_output = layer_outputs[idx]
-        if self.bias_nodes and (idx != self.n_layers - 1):
-            node_output = node_output[0:-1]
-        output_scalars = node_output * (1 - node_output) * previous_beta
-        # some way to vectorize this?
-        for i, o in enumerate(output_scalars):
-            # calculate gradient direction term
-            delta_w = self.alpha * o * layer_outputs[idx - 1]
-
-            # calculate L2 regularization term
-            last_node = self.weights[idx - 1].shape[0]
-
-            # do not regularize bias node
+        Returns:
+            None
+        """
+        previous_beta = cost
+        new_weights = [each.copy() for each in self.weights]
+        # iterate from n to 0 layer outputs -> update weights and calculate
+        # beta for next iteration.
+        for idx in range(self.n_layers - 1, 0, -1):
+            # update weights using previously calculated beta values
+            current_node_output = layer_outputs[idx]
+            if self.bias_nodes and (idx != self.n_layers - 1):
+                current_node_output = current_node_output[0:-1]
+        
+            output_scalars = current_node_output * (1 - current_node_output) *\
+                             previous_beta
+            deltas = self.alpha * np.outer(layer_outputs[idx -1],
+                                           output_scalars)
+            scaled_weights = (1 - self.w_lambda * self.alpha) *\
+                             self.weights[idx - 1]
             if self.bias_nodes:
-                last_node = self.weights[idx - 1].shape[0] - 1
-
-            scaled_weight = (1 - self.w_lambda * self.alpha) *\
-                                self.weights[idx - 1][0:last_node, i]
-
-            if self.bias_nodes:
-                scaled_weight = np.hstack((scaled_weight, 0))
+                scaled_weights[-1, :] = 1
+            new_weights[idx - 1] = scaled_weights + deltas
             
-            new_weights[idx - 1][:, i] = scaled_weight + delta_w
-        
-        # calculate new betas -- remove bias factor node in weight matrix as
-        # node doesn't trace back to other nodes
-        W = self.weights[idx - 1]
-        if self.bias_nodes:
-            W = self.weights[idx - 1][0:-1, :]
-        previous_beta = np.dot(W, output_scalars)
-        
-    self.weights = new_weights
-    return None
+            # calculate new betas -- remove bias factor node in weight matrix as
+            # node doesn't trace back to other nodes
+            W = self.weights[idx - 1]
+            if self.bias_nodes:
+                W = W[0:-1, :]
+            previous_beta = np.dot(W, output_scalars)
+            
+        self.weights = new_weights
+        return None
 
 
 def plot_decision_boundary(model, X, y):
@@ -418,6 +406,7 @@ def plot_confusion_matrix(cm, classes, normalize=False,
 
 def run_experiments():
     """Run experiments as outlined in Homework 1."""
+    np.random.seed(0)
     # linear data
     linear_data = np.loadtxt("DATA/LinearX.csv", delimiter=',')
     linear_labels = np.loadtxt("DATA/LinearY.csv", delimiter=',')
@@ -433,20 +422,80 @@ def run_experiments():
     digit_test_data = np.loadtxt("DATA/Digit_X_test.csv", delimiter=',')
     digit_test_labels = np.loadtxt("DATA/Digit_y_test.csv", delimiter=',')
 
+    # standardize digit data
+    digit_train_data = (digit_train_data - np.mean(digit_train_data)) /\
+                        np.std(digit_train_data)
+    digit_test_data = (digit_test_data - np.mean(digit_test_data)) /\
+                       np.std(digit_test_data)
+
 
     # 1.) 2-layer NN with linear data
-    nn1 = NeuralNet(2, 2, verbose=False)
+    nn1 = NeuralNet(2, 2, verbose=True, learning_rate=1)
     train_and_test_fit(nn1, linear_data, linear_labels, epochs=500)
 
     # 2.) 2-layer NN with non-linear data
-    nn2 = NeuralNet(2, 2, verbose=False)
+    nn2 = NeuralNet(2, 2, verbose=True, learning_rate=1)
     train_and_test_fit(nn2, non_linear_data, non_linear_labels, epochs=500)
 
-    # 3.) 3-layer NN with 2 nodes, both datasets
-    nn3 = NeuralNet(2, 2, hidden_layer_nodes=[3], verbose=True)
-    nn4 = NeuralNet(2, 2, hidden_layer_nodes=[2], verbose=True)
-    train_and_test_fit(nn3, linear_data, linear_labels, epochs=1500)
+    # 3.) 3-layer NN with 5 nodes in hidden layer, both datasets
+    nn3 = NeuralNet(2, 2, hidden_layer_nodes=[5], verbose=True)
+    nn4 = NeuralNet(2, 2, hidden_layer_nodes=[5], verbose=True)
+    train_and_test_fit(nn3, linear_data, linear_labels, epochs=500)
     train_and_test_fit(nn4, non_linear_data, non_linear_labels, epochs=500)
+
+    # 4.) learning rate test, 3-layer NN with 5 nodes in hidden layer, nonlinear
+    loss = []
+    learning_rates = [0.05, 0.25, 0.5, 1, 2, 4, 8]
+    for r in learning_rates:
+        nn5 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=r,
+                        verbose=True)
+        loss.append(nn5.fit(non_linear_data, non_linear_labels, epochs=250))
+
+    plt.figure()
+    for i, each in enumerate(loss):
+        plt.plot(range(0, 250), each, label='r={}'.format(learning_rates[i]))
+    plt.legend()
+    plt.show()
+
+    # 5.) Nodes in hidden layers
+    nodes = range(2, 8, 1)
+    loss = []
+    for n in nodes:
+        nn6 = NeuralNet(2, 2, hidden_layer_nodes=[n], learning_rate=0.25)
+        loss.append(nn6.fit(non_linear_data, non_linear_labels, epochs=250))
+        plot_decision_boundary(nn6, non_linear_data, non_linear_labels)
+
+    plt.figure()
+    for i, each in enumerate(loss):
+        plt.plot(range(0, 250), each, label='n={}'.format(nodes[i]))
+    plt.legend()
+    plt.show()
+
+    # 7. L2 Regularization
+    nn7 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=0.25, w_lambda=0)
+    nn8 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=0.25, w_lambda=1)
+    train_and_test_fit(nn7, non_linear_data, non_linear_labels, epochs=250)
+    train_and_test_fit(nn8, non_linear_data, non_linear_labels, epochs=250)
+
+    # 8. Digit Recognition
+    n9 = NeuralNet(digit_train_data.shape[1], len(set(digit_train_labels)),
+                   hidden_layer_nodes=[200], learning_rate=1,
+                   w_lambda=1)
+    n9.fit(digit_test_data, digit_test_labels, epochs=5000)
+    predict_digits = n9.predict(digit_test_data)
+    cf_matrix = confusion_matrix(digit_test_labels, predict_digits)
+    plot_confusion_matrix(cf_matrix, list(set(digit_test_labels)),
+                          normalize=True)
+
+    
+
+
+
+
+
+    
+
+
 
 
 
