@@ -454,24 +454,30 @@ def run_experiments():
 
 
     # 1.) 2-layer NN with linear data
+    print("2-layer NN with linear data.")
     nn1 = NeuralNet(2, 2, verbose=True, learning_rate=1)
     train_and_test_fit(nn1, linear_data, linear_labels, epochs=500)
 
     # 2.) 2-layer NN with non-linear data
+    print("2-layer NN with non-linear data.")
     nn2 = NeuralNet(2, 2, verbose=True, learning_rate=1)
     train_and_test_fit(nn2, non_linear_data, non_linear_labels, epochs=500)
 
-    # 3.) 3-layer NN with 5 nodes in hidden layer, both datasets
-    nn3 = NeuralNet(2, 2, hidden_layer_nodes=[5], verbose=True)
-    nn4 = NeuralNet(2, 2, hidden_layer_nodes=[5], verbose=True)
+    # 3.) 3-layer NN with 7 nodes in hidden layer, both datasets
+    nn3 = NeuralNet(2, 2, hidden_layer_nodes=[7], verbose=True)
+    nn4 = NeuralNet(2, 2, hidden_layer_nodes=[7], verbose=True)
+    print("3-layer NN with 7 nodes in hidden layer, linear data")
     train_and_test_fit(nn3, linear_data, linear_labels, epochs=500)
+    print("3-layer NN with 7 nodes in hidden layer, non-linear data")
     train_and_test_fit(nn4, non_linear_data, non_linear_labels, epochs=500)
 
     # 4.) learning rate test, 3-layer NN with 5 nodes in hidden layer, nonlinear
     loss = []
     learning_rates = [0.05, 0.25, 0.5, 1, 2, 4, 8]
+    print("Learning rate tests r = [{}]".format(','.join(str(r) for r in learning_rates)))
     for r in learning_rates:
-        nn5 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=r,
+        print("r = {}".format(r))
+        nn5 = NeuralNet(2, 2, hidden_layer_nodes=[7], learning_rate=r,
                         verbose=True)
         loss.append(nn5.fit(non_linear_data, non_linear_labels, epochs=250))
 
@@ -484,7 +490,9 @@ def run_experiments():
     # 5.) Nodes in hidden layers
     nodes = range(2, 8, 1)
     loss = []
+    print("Number of hidden nodes N = [{}]".format(','.join(str(n) for n in nodes)))
     for n in nodes:
+        print("n = {}".format(n))
         nn6 = NeuralNet(2, 2, hidden_layer_nodes=[n], learning_rate=0.25)
         loss.append(nn6.fit(non_linear_data, non_linear_labels, epochs=250))
         plot_decision_boundary(nn6, non_linear_data, non_linear_labels)
@@ -496,22 +504,26 @@ def run_experiments():
     plt.show()
 
     # 7. L2 Regularization
-    nn7 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=0.25, w_lambda=0)
-    nn8 = NeuralNet(2, 2, hidden_layer_nodes=[5], learning_rate=0.25, w_lambda=1)
+    nn7 = NeuralNet(2, 2, hidden_layer_nodes=[7], learning_rate=0.25, w_lambda=0)
+    nn8 = NeuralNet(2, 2, hidden_layer_nodes=[7], learning_rate=0.25, w_lambda=1)
+    print("L2 Regularization r = 0.25, lambda=0")
     train_and_test_fit(nn7, non_linear_data, non_linear_labels, epochs=250)
+    print("L2 Regularization, r = 0.25, lambda=1")
     train_and_test_fit(nn8, non_linear_data, non_linear_labels, epochs=250)
 
     # 8. Digit Recognition
+    print("Digit Recognition, 200 hidden nodes, r = 1, lambda=1")
     n9 = NeuralNet(digit_train_data.shape[1], len(set(digit_train_labels)),
                    hidden_layer_nodes=[200], learning_rate=1,
                    w_lambda=1)
-    n9.fit(digit_train_data, digit_train_labels, epochs=5000)
+    n9.fit(digit_train_data, digit_train_labels, epochs=2000)
     predict_digits = n9.predict(digit_test_data)
     cf_matrix = confusion_matrix(digit_test_labels, predict_digits)
     plot_confusion_matrix(cf_matrix, list(set(digit_test_labels)),
                           normalize=True)
 
-    
+if __name__ == "__main__":
+    run_experiments()
 
 
 
